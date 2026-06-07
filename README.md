@@ -1,8 +1,16 @@
-# MTEB Portuguese — Brazilian Portuguese Embedding Benchmark
+<div align="center">
+
+# MTEB-PT
+
+**Massive Text Embedding Benchmark for Brazilian Portuguese**
 
 [![Leaderboard](https://img.shields.io/badge/🤗-Leaderboard-yellow)](https://huggingface.co/spaces/mteb-pt/leaderboard)
 [![Results](https://img.shields.io/badge/🤗-Dataset-blue)](https://huggingface.co/datasets/mteb-pt/mteb-pt-results)
 [![Org](https://img.shields.io/badge/🤗-mteb--pt-green)](https://huggingface.co/mteb-pt)
+[![License: Apache 2.0](https://img.shields.io/badge/License_(code)-Apache_2.0-blue)](LICENSE)
+[![License: CC-BY-4.0](https://img.shields.io/badge/License_(data)-CC--BY--4.0-orange)](https://creativecommons.org/licenses/by/4.0/)
+
+</div>
 
 A public benchmark for evaluating text embedding models on **Brazilian Portuguese**, built as a thin extension on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library.
 
