@@ -113,4 +113,4 @@ If you used a specific task novel to this benchmark, please also cite the origin
 
 ## Acknowledgments
 
-Built on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library by Enevoldsen et al. (2025). Task datasets contributed by their original authors (see datasheets). Compute generously provided by Modal.
+Built on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library (Muennighoff et al., 2023). The multilingual sub-benchmark methodology follows MMTEB (Enevoldsen et al., 2025). Task datasets contributed by their original authors — see the [Task suite](#task-suite-16-headline-tasks) table above for sources and citations.
