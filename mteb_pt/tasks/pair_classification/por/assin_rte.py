@@ -56,7 +56,7 @@ class AssinRTE(AbsTaskPairClassification):
         date=("2016-01-01", "2016-12-31"),
         domains=["News", "Web", "Written"],
         task_subtypes=["Textual Entailment"],
-        license="not specified",
+        license="cc-by-4.0",
         annotations_creators="expert-annotated",
         dialect=["brazilian"],
         sample_creation="created",

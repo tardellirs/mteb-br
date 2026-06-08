@@ -14,9 +14,9 @@ Domain pairing for the cross-domain reranking story:
 - QuatiReranking   — web / general PT-BR
 - JurisTCUReranking — legal / TCU jurisprudence (this task)
 
-License: parent dataset declares no SPDX identifier. Recorded as "not
-specified"; authors emailed for clarification (same status as JurisTCU
-retrieval task).
+License: CC-BY-4.0, confirmed by the dataset authors (L. Fernandes,
+personal communication, 2026-06-08) consistent with the licensing of
+the dataset's paper (Springer LREv 2026, doi:10.1007/s10579-025-09881-w).
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class JurisTCUReranking(AbsTaskRetrieval):
         date=("2020-01-01", "2025-12-31"),
         domains=["Legal", "Government", "Written"],
         task_subtypes=["Question answering"],
-        license="not specified",
+        license="cc-by-4.0",
         annotations_creators="expert-annotated",
         dialect=["brazilian"],
         sample_creation="created",
