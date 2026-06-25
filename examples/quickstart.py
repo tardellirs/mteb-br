@@ -1,29 +1,26 @@
-"""Quickstart: evaluate a sentence-transformers model on a single MTEB-PT task.
+"""Quickstart: evaluate any embedding model on a single MTEB-PT task.
 
 Usage::
 
-    pip install mteb-pt sentence-transformers
-    python examples/quickstart.py
+    pip install mteb-pt
+    python examples/quickstart.py --model intfloat/multilingual-e5-base --task HateBR
 
-Default model and task can be changed via CLI flags. This script runs in under
-5 minutes on a CPU for the default ``HateBR`` task with ``mE5-base``.
-
-Output: a JSON file in ``./results/HateBR.json`` with the headline metric and
-the full per-experiment score distribution.
+Runs in a few minutes on CPU for the default ``HateBR`` task. Results are cached
+in the mteb results cache (``MTEB_CACHE`` env var, default ``~/.cache/mteb``).
 """
+
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+
+import mteb
 
 import mteb_pt.register  # noqa: F401  -- side-effect import: registers tasks
-import mteb
-from sentence_transformers import SentenceTransformer
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run a single MTEB-PT task on a sentence-transformers model.",
+        description="Run a single MTEB-PT task on an embedding model.",
     )
     parser.add_argument(
         "--model",
@@ -35,29 +32,17 @@ def main() -> None:
         default="HateBR",
         help="MTEB-PT task name (default: HateBR)",
     )
-    parser.add_argument(
-        "--output",
-        default="./results",
-        help="Output directory for the result JSON (default: ./results)",
-    )
     args = parser.parse_args()
 
-    print(f"Model:  {args.model}")
-    print(f"Task:   {args.task}")
-    print(f"Output: {args.output}")
-    print()
+    print(f"Model: {args.model}")
+    print(f"Task:  {args.task}\n")
 
-    model = SentenceTransformer(args.model)
+    model = mteb.get_model(args.model)
     task = mteb.get_task(args.task)
-    evaluator = mteb.MTEB(tasks=[task])
-    evaluator.run(model, output_folder=args.output, verbosity=1)
+    results = mteb.evaluate(model, tasks=[task])
 
-    # Locate the result JSON
-    result_file = next(Path(args.output).rglob(f"{args.task}.json"), None)
-    if result_file:
-        print(f"\nResult written to: {result_file}")
-    else:
-        print("\nNo result JSON found — check the output directory.")
+    print("\nDone. Results cached in the mteb results cache (MTEB_CACHE / ~/.cache/mteb).")
+    print(results)
 
 
 if __name__ == "__main__":

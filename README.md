@@ -12,16 +12,18 @@
 
 </div>
 
-A public benchmark for evaluating text embedding models on **Brazilian Portuguese**, built as a thin extension on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library.
+A public benchmark for evaluating text embedding models on **native Brazilian Portuguese**, built as a thin extension on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library.
 
 **Live leaderboard**: <https://huggingface.co/spaces/mteb-pt/leaderboard>
 
 ## What it is
 
-- **54 models** evaluated · open-weights + commercial APIs
-- **16 tasks** from native PT-BR sources (no machine-translated benchmarks)
-- Headline metric **mean_16** = average across all 16 tasks
+- **26 tasks** from **native** PT-BR sources — created or mined in Portuguese, **no machine translation**
+- **8 MTEB task-types**: Classification, Multi-label Classification, Regression, Pair Classification, STS, Clustering, Retrieval, Reranking
+- Open-weights **and** commercial-API models evaluated
 - Per-task scores, per-query parquets, and reproduction scripts all public
+
+> **v2** (this release) expands the original 16-task suite to 26 native tasks, adding two task-types (Regression, Multi-label Classification) and new domains (Emotion, Financial, News/fact-check, Government/legislative, Programming). See [`HEADLINE_TASKS`](mteb_pt/__init__.py).
 
 ## Quickstart
 
@@ -31,107 +33,112 @@ Install the package directly from GitHub:
 pip install git+https://github.com/tardellirs/mteb-pt.git
 ```
 
-Evaluate any sentence-transformers model on a single MTEB-PT task:
+Evaluate any model on a single MTEB-PT task:
 
 ```python
-import mteb_pt.register   # registers our 16 tasks with the global mteb registry
+import mteb_pt.register   # registers the 26 tasks with the global mteb registry
 import mteb
-from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer("intfloat/multilingual-e5-large-instruct")
+model = mteb.get_model("intfloat/multilingual-e5-large-instruct")
 task  = mteb.get_task("HateBR")
-mteb.MTEB(tasks=[task]).run(model, output_folder="./results")
+mteb.evaluate(model, tasks=[task])
 ```
 
-Or run the **full 16-task headline evaluation** in one command:
+Or run the **full 26-task suite** in one command (resumable; spot / block-volume friendly):
 
 ```bash
-python examples/run_headline.py \
-    --model intfloat/multilingual-e5-large-instruct \
-    --output ./results
+python scripts/run_mteb_por_v2.py intfloat/multilingual-e5-large-instruct
 ```
 
-This reproduces a row of the public leaderboard. Total runtime is approximately 30–60 minutes on a single A10G GPU depending on model size.
+Re-running the same command **resumes**: finished `(model, task)` pairs are skipped (`overwrite_strategy="only-missing"`). Point `HF_HOME` and `MTEB_CACHE` at a persistent volume to survive spot preemption without re-downloading. See the script header for the full setup.
 
-Compute the **paired-bootstrap p-value** between two model evaluations (reproduces paper Finding F1):
+Compute the **paired-bootstrap p-value** between two model evaluations:
 
 ```bash
 python examples/compute_bootstrap_ci.py \
-    --results-a ./results/intfloat__multilingual-e5-large-instruct/mean_16.json \
-    --results-b ./results/Qwen__Qwen3-Embedding-8B/mean_16.json
+    --results-a ./results/intfloat__multilingual-e5-large-instruct \
+    --results-b ./results/Qwen__Qwen3-Embedding-8B
 ```
 
 ## Package layout
 
 ```
 mteb_pt/
-├── __init__.py                       # HEADLINE_TASKS list + TASKS_BY_CATEGORY map
-├── register.py                       # side-effect: registers all 16 tasks with mteb
+├── __init__.py                       # HEADLINE_TASKS (26) + TASKS_BY_CATEGORY map
+├── register.py                       # side-effect: registers the 26 tasks with mteb
 ├── stats.py                          # bootstrap CIs + paired significance helpers
 └── tasks/
-    ├── classification/por/           # HateBR, OffComBR, ToxSynPT, TweetSentBR
+    ├── classification/por/           # HateBR, ToxSynPT, FactckBr
+    ├── multilabel_classification/por/ # BrighterEmotion, OlidBr
+    ├── regression/por/               # EnemEssay, NarrativeEssaysBR, BrighterEmotionIntensity
     ├── pair_classification/por/      # AssinRTE, InferBR
-    ├── sts/por/                      # AssinSTS
-    ├── clustering/por/               # MedPTClustering, WikipediaPTCategoriesClusteringP2P
-    └── retrieval/por/                # Quati, JurisTCU, BRTaxQAR, FaQuADIR, MedPTRetrieval
-                                      # + reranking variants for Quati and JurisTCU
+    ├── sts/por/                      # AssinSTS  (+ Assin2STS upstream)
+    ├── clustering/por/               # MedPT, WikipediaPTCategories, JurisTCU-P2P,
+    │                                 #   SciELO, CamaraProposicoes, StackoverflowPt
+    ├── retrieval/por/                # Quati, JurisTCU, BRTaxQAR, FaQuADIR,
+    │                                 #   MedPTRetrieval, FaqBacen
+    └── reranking/por/                # QuatiReranking, JurisTCUReranking
+
+scripts/
+└── run_mteb_por_v2.py                # full 26-task suite, resumable (spot/block-volume aware)
 
 examples/
-├── quickstart.py                     # 1 model × 1 task smoke test (~5 min CPU)
-├── run_headline.py                   # full 16-task evaluation on one model
+├── quickstart.py                     # 1 model × 1 task smoke test
 └── compute_bootstrap_ci.py           # paired-bootstrap p-value between two models
 
 tests/
-└── test_register.py                  # smoke tests: all 16 tasks resolve via mteb.get_task
+└── test_register.py                  # smoke tests: all 26 tasks resolve via mteb.get_task
 ```
 
-## Task suite (16 headline tasks)
+## Task suite (26 tasks)
 
-Each task wrapper uses upstream data pinned to a specific revision. Click a source for the
-original dataset / paper.
+Each task wrapper pins its source dataset to a specific revision SHA. All sources are native PT-BR (no machine translation).
 
-| Task | Category | Source |
+| Task | Type | Source |
 |---|---|---|
-| [HateBR](https://aclanthology.org/2022.lrec-1.777/) | Classification | Vargas et al. 2022 (LREC) — [HF dataset](https://huggingface.co/datasets/franciellevargas/HateBR) |
-| [OffComBR](https://huggingface.co/datasets/fernandabufon/offcombr) | Classification | Pelle & Moreira 2017 — HF mirror |
-| [TweetSentBR](http://www.lrec-conf.org/proceedings/lrec2018/summaries/389.html) | Classification | Brum & Nunes 2018 (LREC) |
+| [HateBR](https://aclanthology.org/2022.lrec-1.777/) | Classification | Vargas et al. 2022 — [HF](https://huggingface.co/datasets/franciellevargas/HateBR) |
 | [ToxSynPT](https://huggingface.co/datasets/AKCIT/ToxSyn-PT) | Classification | AKCIT |
-| [AssinRTE](https://aclanthology.org/2020.lrec-1.319/) | Pair-classification (NLI) | Real et al. 2020 (LREC) — [HF dataset](https://huggingface.co/datasets/nilc-nlp/assin) |
-| [InferBR](https://aclanthology.org/2024.lrec-main.788/) | Pair-classification (NLI) | Rodrigues et al. 2024 (LREC) |
-| [AssinSTS](https://aclanthology.org/2020.lrec-1.319/) | STS | Real et al. 2020 (LREC) — [HF dataset](https://huggingface.co/datasets/nilc-nlp/assin) |
-| [MedPTClustering](https://huggingface.co/datasets/AKCIT/MedPT) | Clustering | AKCIT |
+| [FactckBrClassification](https://huggingface.co/datasets/tardellirs/mteb-pt-factckbr) | Classification | FACTCK.BR fact-check claims |
+| [BrighterEmotionMultilabelClassification](https://huggingface.co/datasets/brighter-dataset/BRIGHTER-emotion-categories) | Multi-label Classification | BRIGHTER (multi-emotion) |
+| [OlidBrMultilabelClassification](https://huggingface.co/datasets/dougtrajano/olid-br) | Multi-label Classification | OLID-BR (offensive types) |
+| [EnemEssayRegression](https://huggingface.co/datasets/kamel-usp/aes_enem_dataset) | Regression | AES-ENEM essay grades |
+| [NarrativeEssaysBRRegression](https://huggingface.co/datasets/tardellirs/mteb-pt-narrative-essays) | Regression | Narrative essay competencies |
+| [BrighterEmotionIntensityRegression](https://huggingface.co/datasets/brighter-dataset/BRIGHTER-emotion-intensities) | Regression | BRIGHTER emotion intensity |
+| [AssinRTE](https://aclanthology.org/2020.lrec-1.319/) | Pair Classification (NLI) | Real et al. 2020 — [HF](https://huggingface.co/datasets/nilc-nlp/assin) |
+| [InferBR](https://aclanthology.org/2024.lrec-main.788/) | Pair Classification (NLI) | Rodrigues et al. 2024 |
+| [AssinSTS](https://aclanthology.org/2020.lrec-1.319/) | STS | Real et al. 2020 — [HF](https://huggingface.co/datasets/nilc-nlp/assin) |
+| [Assin2STS](https://huggingface.co/datasets/nilc-nlp/assin2) | STS | ASSIN 2 (NILC) — *upstream mteb* |
 | [WikipediaPTCategoriesClusteringP2P](https://huggingface.co/datasets/tardellirs/mteb-pt-wikipedia-categories) | Clustering | Wikipedia-derived (this benchmark) |
-| [Quati](https://aclanthology.org/2024.stil-1.19/) | Retrieval (Pool) | Bueno et al. 2024 (STIL) — [HF dataset](https://huggingface.co/datasets/unicamp-dl/quati) |
+| [MedPTClustering](https://huggingface.co/datasets/AKCIT/MedPT) | Clustering | AKCIT |
+| [JurisTCUClusteringP2P](https://huggingface.co/datasets/LeandroRibeiro/JurisTCU) | Clustering | TCU rulings (this benchmark) |
+| [SciELOClusteringP2P](https://huggingface.co/datasets/tardellirs/mteb-pt-scielo-clustering) | Clustering | SciELO abstracts (this benchmark) |
+| [CamaraProposicoesClustering](https://huggingface.co/datasets/tardellirs/mteb-pt-camara-proposicoes-clustering) | Clustering | Câmara dos Deputados (LAI / CC-BY) |
+| [StackoverflowPtClustering](https://huggingface.co/datasets/tardellirs/mteb-pt-stackoverflow-clustering) | Clustering | Stack Overflow em Português (CC-BY-SA) |
+| [Quati](https://aclanthology.org/2024.stil-1.19/) | Retrieval | Bueno et al. 2024 — [HF](https://huggingface.co/datasets/unicamp-dl/quati) (250k subsample) |
 | [JurisTCU](https://huggingface.co/datasets/LeandroRibeiro/JurisTCU) | Retrieval | Ribeiro et al. — TCU rulings |
 | [BRTaxQAR](https://huggingface.co/datasets/unicamp-dl/BR-TaxQA-R) | Retrieval | UNICAMP-DL |
-| [FaQuADIR](https://github.com/liafacom/faquad) | Retrieval | Sayama et al. 2019 — [HF mirror](https://huggingface.co/datasets/eraldoluis/faquad) |
+| [FaQuADIR](https://github.com/liafacom/faquad) | Retrieval | Sayama et al. 2019 |
 | [MedPTRetrieval](https://huggingface.co/datasets/AKCIT/MedPT) | Retrieval | AKCIT |
-| [QuatiReranking](https://aclanthology.org/2024.stil-1.19/) | Reranking | Bueno et al. 2024 — [HF dataset](https://huggingface.co/datasets/unicamp-dl/quati) |
-| [JurisTCUReranking](https://huggingface.co/datasets/LeandroRibeiro/JurisTCU) | Reranking | Ribeiro et al. — TCU rulings |
+| [FaqBacenRetrieval](https://huggingface.co/datasets/tardellirs/mteb-pt-faq-bacen) | Retrieval | Banco Central do Brasil FAQ |
+| [QuatiReranking](https://aclanthology.org/2024.stil-1.19/) | Reranking | Bueno et al. 2024 — BM25 hard negatives |
+| [JurisTCUReranking](https://huggingface.co/datasets/LeandroRibeiro/JurisTCU) | Reranking | TCU rulings — BM25 hard negatives |
 
-Two additional tasks are evaluated but **excluded from the headline `mean_16`**: CSTNewsClustering (degenerate — all models score 1.000) and BBCNewsPTClustering (BBC copyright concern). They remain in the raw results for transparency.
-
-If you cite a specific task in your work, please cite the **original task source** alongside this benchmark.
+If you cite a specific task, please cite its **original source** alongside this benchmark.
 
 ## Submit a new model
 
 Two channels, pick whichever fits:
 
-- **HF Discussion** on the leaderboard Space → [open a thread here](https://huggingface.co/spaces/mteb-pt/leaderboard/discussions/new) and attach the eval JSONs
+- **HF Discussion** on the leaderboard Space → [open a thread](https://huggingface.co/spaces/mteb-pt/leaderboard/discussions/new) and attach the eval JSONs
 - **GitHub Issue** → use the [model submission template](https://github.com/tardellirs/mteb-pt/issues/new?template=submit-model.yml)
 
-Required for a submission:
-1. `model_id` (HF repo path or vendor product name)
-2. Per-task result JSONs for the 16 headline tasks
-3. Reproducible evaluation command (e.g. the `mteb` library invocation or a script that downloads + evaluates the model)
-
-We re-run a sample of submissions to verify before merging into the leaderboard. Closed-API models accepted (we'll verify with the vendor's official endpoint).
+Required: (1) `model_id`; (2) per-task result JSONs for the 26 tasks; (3) a reproducible evaluation command (e.g. `python scripts/run_mteb_por_v2.py <model_id>`). We re-run a sample of submissions before merging. Closed-API models accepted (verified against the vendor's official endpoint).
 
 ## Propose a new task
 
 A task is a candidate for inclusion if it:
-- Sources its data from native PT-BR (not machine-translated)
-- Has clear licensing
+- Sources its data from **native** PT-BR (not machine-translated)
+- Has clear, permissive licensing
 - Discriminates across embedding models (i.e. not degenerate)
 
 Open an [issue using the task proposal template](https://github.com/tardellirs/mteb-pt/issues/new?template=propose-task.yml) describing the dataset, license, size, and discrimination evidence.
@@ -160,9 +167,9 @@ If you used a specific task novel to this benchmark, please also cite the origin
 
 - Benchmark code: Apache-2.0
 - Results dataset: CC-BY-4.0
-- Individual task datasets: see each dataset's original license (linked in `docs/datasheet_novel_tasks.md`)
+- Individual task datasets: see each dataset's original license (linked in the task table above)
 - Models evaluated: see each model card
 
 ## Acknowledgments
 
-Built on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library (Muennighoff et al., 2023). The multilingual sub-benchmark methodology follows MMTEB (Enevoldsen et al., 2025). Task datasets contributed by their original authors — see the [Task suite](#task-suite-16-headline-tasks) table above for sources and citations.
+Built on top of the [`mteb`](https://github.com/embeddings-benchmark/mteb) library (Muennighoff et al., 2023). The multilingual sub-benchmark methodology follows MMTEB (Enevoldsen et al., 2025). Task datasets contributed by their original authors — see the [Task suite](#task-suite-26-tasks) table for sources and citations.

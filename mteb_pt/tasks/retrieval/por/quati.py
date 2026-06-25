@@ -3,46 +3,46 @@
 Reference: https://aclanthology.org/2024.stil-1.19/
 Dataset:   https://huggingface.co/datasets/unicamp-dl/quati
 
-Quati ships 50 native PT-BR test topics + ~1933 human relevance judgements
-over a 1M Brazilian web passage pool from ClueWeb22-PT. It's the first
-retrieval benchmark designed natively for PT-BR (no translation).
+Quati ships 50 native PT-BR test topics + ~1,900 human relevance judgements over
+a 1M Brazilian web passage pool (ClueWeb22-PT) — the first retrieval benchmark
+designed natively for PT-BR (no translation).
 
-Because `unicamp-dl/quati` is a script-based dataset incompatible with
-`datasets>=3`, we override `load_data` and read the raw TSV files via
-`hf_hub_download`.
+For tractability we evaluate over a **250k subsample** of the corpus that keeps
+ALL judged passages plus a fixed random sample (seed 42) of the rest — an
+accepted MTEB practice for very large corpora. This keeps Quati a hard
+large-scale retrieval task while making the suite ~4x cheaper to run and re-run
+(Quati was ~93% of the per-model encoding load at 1M). Repackaged + pinned at
+tardellirs/mteb-pt-quati-250k (corpus / queries / qrels configs).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from huggingface_hub import hf_hub_download
 from mteb import TaskMetadata
 from mteb.abstasks import AbsTaskRetrieval
 
-_QUATI_REPO = "unicamp-dl/quati"
-_QUATI_REVISION = "e5279055bba3e7ba1bece5c0eddd0ba232df49c3"
-_PASSAGES_FILE = "quati_1M.tsv"
-_TOPICS_FILE = "topics/quati_test_topics.tsv"
-_QRELS_FILE = "qrels/quati_1M_qrels.txt"
+_REPO = "tardellirs/mteb-pt-quati-250k"
+_REVISION = "7440d16aa3a53c037e63a16591c461210b72dd82"
 
 
 class Quati(AbsTaskRetrieval):
-    """Quati 1M — Brazilian Portuguese native web retrieval, 50 test topics."""
+    """Quati — Brazilian Portuguese native web retrieval, 50 topics over a 250k pool."""
 
     metadata = TaskMetadata(
         name="Quati",
         description=(
             "Quati: native Brazilian Portuguese web retrieval benchmark. 50 test "
-            "topics with 1,933 human relevance judgements over a 1M Brazilian "
-            "web passage pool (ClueWeb22-PT). First PT-BR retrieval benchmark "
-            "designed without translation; queries are naturally-occurring "
-            "Brazilian web questions."
+            "topics with ~1,900 human relevance judgements over a Brazilian web "
+            "passage pool (ClueWeb22-PT). First PT-BR retrieval benchmark designed "
+            "without translation; queries are naturally-occurring Brazilian web "
+            "questions. Evaluated over a 250k corpus subsample (all judged passages "
+            "plus a fixed random sample of the 1M pool) for tractability."
         ),
         reference="https://aclanthology.org/2024.stil-1.19/",
         dataset={
-            "path": _QUATI_REPO,
-            "revision": _QUATI_REVISION,
+            "path": _REPO,
+            "revision": _REVISION,
         },
         type="Retrieval",
         category="t2t",
@@ -70,46 +70,22 @@ class Quati(AbsTaskRetrieval):
     )
 
     def load_data(self, **kwargs: Any) -> None:  # type: ignore[override]
-        """Populate self.corpus / self.queries / self.relevant_docs from Quati TSVs.
-
-        We override AbsTaskRetrieval.load_data with our own loader because
-        unicamp-dl/quati is script-based (incompatible with datasets>=3).
-        """
+        """Load corpus/queries/qrels from the pinned 250k-subsample HF dataset."""
         if getattr(self, "data_loaded", False):
             return
+        from datasets import load_dataset
 
-        passages_path = hf_hub_download(
-            _QUATI_REPO, _PASSAGES_FILE, repo_type="dataset", revision=_QUATI_REVISION
-        )
-        topics_path = hf_hub_download(
-            _QUATI_REPO, _TOPICS_FILE, repo_type="dataset", revision=_QUATI_REVISION
-        )
-        qrels_path = hf_hub_download(
-            _QUATI_REPO, _QRELS_FILE, repo_type="dataset", revision=_QUATI_REVISION
-        )
-
-        corpus: dict[str, dict[str, str]] = {}
-        with open(passages_path, encoding="utf-8") as f:
-            for line in f:
-                parts = line.rstrip("\n").split("\t", 1)
-                if len(parts) == 2:
-                    corpus[parts[0]] = {"text": parts[1], "title": ""}
-
-        queries: dict[str, str] = {}
-        with open(topics_path, encoding="utf-8") as f:
-            f.readline()  # skip header
-            for line in f:
-                parts = line.rstrip("\n").split("\t", 1)
-                if len(parts) == 2:
-                    queries[parts[0]] = parts[1]
-
+        corpus = {
+            r["_id"]: {"text": r["text"], "title": r["title"]}
+            for r in load_dataset(_REPO, "corpus", split="test", revision=_REVISION)
+        }
+        queries = {
+            r["_id"]: r["text"]
+            for r in load_dataset(_REPO, "queries", split="test", revision=_REVISION)
+        }
         relevant_docs: dict[str, dict[str, int]] = {}
-        with open(qrels_path, encoding="utf-8") as f:
-            for line in f:
-                parts = line.split()
-                if len(parts) >= 4:
-                    qid, _, docid, rel = parts[0], parts[1], parts[2], int(parts[3])
-                    relevant_docs.setdefault(qid, {})[docid] = rel
+        for r in load_dataset(_REPO, "qrels", split="test", revision=_REVISION):
+            relevant_docs.setdefault(str(r["query-id"]), {})[str(r["corpus-id"])] = int(r["score"])
 
         self.corpus = {"test": corpus}
         self.queries = {"test": queries}

@@ -1,0 +1,112 @@
+{
+    "test": {
+        "num_samples": 1738,
+        "samples_in_train": 0,
+        "text_statistics": {
+            "total_text_length": 218195,
+            "min_text_length": 5,
+            "average_text_length": 125.54372842347526,
+            "max_text_length": 921,
+            "unique_texts": 1738
+        },
+        "image_statistics": null,
+        "audio_statistics": null,
+        "video_statistics": null,
+        "label_statistics": {
+            "min_labels_per_text": 0,
+            "average_label_per_text": 1.5535097813578826,
+            "max_labels_per_text": 5,
+            "unique_labels": 11,
+            "labels": {
+                "insult": {
+                    "count": 1397
+                },
+                "profanity_obscene": {
+                    "count": 578
+                },
+                "ideology": {
+                    "count": 305
+                },
+                "xenophobia": {
+                    "count": 32
+                },
+                "physical_aspects": {
+                    "count": 83
+                },
+                "sexism": {
+                    "count": 115
+                },
+                "None": {
+                    "count": 261
+                },
+                "health": {
+                    "count": 39
+                },
+                "racism": {
+                    "count": 23
+                },
+                "lgbtqphobia": {
+                    "count": 94
+                },
+                "other_lifestyle": {
+                    "count": 34
+                }
+            }
+        }
+    },
+    "train": {
+        "num_samples": 5214,
+        "samples_in_train": null,
+        "text_statistics": {
+            "total_text_length": 641791,
+            "min_text_length": 4,
+            "average_text_length": 123.08995013425393,
+            "max_text_length": 1084,
+            "unique_texts": 5214
+        },
+        "image_statistics": null,
+        "audio_statistics": null,
+        "video_statistics": null,
+        "label_statistics": {
+            "min_labels_per_text": 0,
+            "average_label_per_text": 1.5542769466820099,
+            "max_labels_per_text": 6,
+            "unique_labels": 11,
+            "labels": {
+                "insult": {
+                    "count": 4192
+                },
+                "profanity_obscene": {
+                    "count": 1733
+                },
+                "sexism": {
+                    "count": 346
+                },
+                "ideology": {
+                    "count": 916
+                },
+                "lgbtqphobia": {
+                    "count": 281
+                },
+                "xenophobia": {
+                    "count": 96
+                },
+                "health": {
+                    "count": 119
+                },
+                "None": {
+                    "count": 766
+                },
+                "physical_aspects": {
+                    "count": 251
+                },
+                "racism": {
+                    "count": 69
+                },
+                "other_lifestyle": {
+                    "count": 101
+                }
+            }
+        }
+    }
+}

@@ -1,22 +1,24 @@
 """MTEB Portuguese (mteb-pt) — a public benchmark for evaluating text embedding
-models on Brazilian Portuguese.
+models on **native** Brazilian Portuguese (created or mined in PT-BR, no machine
+translation).
 
 Usage
 -----
 
-Auto-register all 16 headline tasks with the upstream ``mteb`` library and run
-an evaluation on your model::
+Register the MTEB(por, v2) tasks with the upstream ``mteb`` library and evaluate::
 
-    import mteb_pt.register  # side-effect: registers our 16 tasks with mteb
+    import mteb_pt.register  # side-effect: registers the tasks with mteb
     import mteb
-    from sentence_transformers import SentenceTransformer
 
-    model = SentenceTransformer("intfloat/multilingual-e5-large-instruct")
+    model = mteb.get_model("intfloat/multilingual-e5-large-instruct")
     tasks = mteb.get_tasks(tasks=mteb_pt.HEADLINE_TASKS)
-    results = mteb.MTEB(tasks=tasks).run(model, output_folder="./results")
+    results = mteb.evaluate(model, tasks=tasks)
 
-See ``examples/`` in the GitHub repository for full evaluation, paired-bootstrap
-significance testing, and headline ranking reproduction.
+Or run the whole suite (resumable; spot / block-volume friendly)::
+
+    python scripts/run_mteb_por_v2.py intfloat/multilingual-e5-small
+
+See ``examples/`` for paired-bootstrap significance testing and headline ranking.
 
 Resources
 ---------
@@ -29,42 +31,78 @@ Resources
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
-#: The 16 headline MTEB-PT tasks reported in the paper's ``mean_16`` metric.
+#: The 26 MTEB(por, v2) tasks — all native Brazilian Portuguese, no translation,
+#: spanning 8 MTEB task-types.
 HEADLINE_TASKS: list[str] = [
-    # Classification (4)
+    # Classification (3)
     "HateBR",
-    "OffComBR",
-    "TweetSentBR",
     "ToxSynPT",
+    "FactckBrClassification",
+    # Multi-label classification (2)
+    "BrighterEmotionMultilabelClassification",
+    "OlidBrMultilabelClassification",
+    # Regression (3)
+    "EnemEssayRegression",
+    "NarrativeEssaysBRRegression",
+    "BrighterEmotionIntensityRegression",
     # Pair classification / NLI (2)
     "AssinRTE",
     "InferBR",
-    # Semantic textual similarity (1)
+    # Semantic textual similarity (2)
     "AssinSTS",
-    # Clustering (2)
-    "MedPTClustering",
+    "Assin2STS",
+    # Clustering (6)
     "WikipediaPTCategoriesClusteringP2P",
-    # Retrieval (5)
+    "MedPTClustering",
+    "JurisTCUClusteringP2P",
+    "SciELOClusteringP2P",
+    "CamaraProposicoesClustering",
+    "StackoverflowPtClustering",
+    # Retrieval (6)
     "Quati",
     "JurisTCU",
     "BRTaxQAR",
     "FaQuADIR",
     "MedPTRetrieval",
+    "FaqBacenRetrieval",
     # Reranking (2)
     "QuatiReranking",
     "JurisTCUReranking",
 ]
 
-#: Per-category groupings, matching the paper's Table 2.
+#: Per-category groupings (the 8 MTEB task-types covered).
 TASKS_BY_CATEGORY: dict[str, list[str]] = {
-    "Classification":      ["HateBR", "OffComBR", "TweetSentBR", "ToxSynPT"],
-    "Pair classification": ["AssinRTE", "InferBR"],
-    "STS":                 ["AssinSTS"],
-    "Clustering":          ["MedPTClustering", "WikipediaPTCategoriesClusteringP2P"],
-    "Retrieval":           ["Quati", "JurisTCU", "BRTaxQAR", "FaQuADIR", "MedPTRetrieval"],
-    "Reranking":           ["QuatiReranking", "JurisTCUReranking"],
+    "Classification": ["HateBR", "ToxSynPT", "FactckBrClassification"],
+    "MultilabelClassification": [
+        "BrighterEmotionMultilabelClassification",
+        "OlidBrMultilabelClassification",
+    ],
+    "Regression": [
+        "EnemEssayRegression",
+        "NarrativeEssaysBRRegression",
+        "BrighterEmotionIntensityRegression",
+    ],
+    "PairClassification": ["AssinRTE", "InferBR"],
+    "STS": ["AssinSTS", "Assin2STS"],
+    "Clustering": [
+        "WikipediaPTCategoriesClusteringP2P",
+        "MedPTClustering",
+        "JurisTCUClusteringP2P",
+        "SciELOClusteringP2P",
+        "CamaraProposicoesClustering",
+        "StackoverflowPtClustering",
+    ],
+    "Retrieval": [
+        "Quati",
+        "JurisTCU",
+        "BRTaxQAR",
+        "FaQuADIR",
+        "MedPTRetrieval",
+        "FaqBacenRetrieval",
+    ],
+    "Reranking": ["QuatiReranking", "JurisTCUReranking"],
 }
 
 __all__ = ["HEADLINE_TASKS", "TASKS_BY_CATEGORY", "__version__"]

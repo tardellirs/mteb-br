@@ -80,8 +80,13 @@ class JurisTCU(AbsTaskRetrieval):
                  da Silva Pacheco, Leonardo Augusto and
                  de Oliveira Sandes, Edans Fl{\'a}vius},
     title     = {{JurisTCU: a Brazilian Portuguese information retrieval dataset with query relevance judgments}},
+    journal   = {Language Resources and Evaluation},
     year      = {2026},
-    url       = {https://huggingface.co/datasets/LeandroRibeiro/JurisTCU},
+    volume    = {60},
+    number    = {1},
+    doi       = {10.1007/s10579-025-09881-w},
+    url       = {https://doi.org/10.1007/s10579-025-09881-w},
+    issn      = {1574-0218},
 }""",
     )
 

@@ -1,0 +1,34 @@
+{
+    "test": {
+        "num_samples": 1076,
+        "number_of_characters": 15583011,
+        "documents_text_statistics": {
+            "total_text_length": 15508035,
+            "min_text_length": 199,
+            "average_text_length": 32443.587866108788,
+            "max_text_length": 1170526,
+            "unique_texts": 478
+        },
+        "documents_image_statistics": null,
+        "documents_audio_statistics": null,
+        "documents_video_statistics": null,
+        "queries_text_statistics": {
+            "total_text_length": 74976,
+            "min_text_length": 16,
+            "average_text_length": 125.37792642140468,
+            "max_text_length": 501,
+            "unique_texts": 598
+        },
+        "queries_image_statistics": null,
+        "queries_audio_statistics": null,
+        "queries_video_statistics": null,
+        "relevant_docs_statistics": {
+            "num_relevant_docs": 1747,
+            "min_relevant_docs_per_query": 1,
+            "average_relevant_docs_per_query": 2.9214046822742477,
+            "max_relevant_docs_per_query": 21,
+            "unique_relevant_docs": 471
+        },
+        "top_ranked_statistics": null
+    }
+}

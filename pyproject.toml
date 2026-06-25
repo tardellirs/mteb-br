@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mteb-pt"
-version = "1.0.0"
+version = "2.0.0"
 description = "MTEB Portuguese: a public benchmark for evaluating text embedding models on Brazilian Portuguese"
 readme = "README.md"
 license = { file = "LICENSE" }

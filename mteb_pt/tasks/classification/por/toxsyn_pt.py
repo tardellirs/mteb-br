@@ -25,7 +25,7 @@ from mteb import TaskMetadata
 from mteb.abstasks import AbsTaskClassification
 
 _REPO = "AKCIT/ToxSyn-PT"
-_REVISION = "48aac239d611"
+_REVISION = "48aac239d6111c1610a4222025536c1ec84e10b9"
 
 
 class ToxSynPT(AbsTaskClassification):
@@ -58,11 +58,17 @@ class ToxSynPT(AbsTaskClassification):
         annotations_creators="LM-generated",
         dialect=["brazilian"],
         sample_creation="LM-generated and verified",
-        bibtex_citation=r"""@misc{akcit-toxsyn-pt-2024,
-    title = {{T}ox{S}yn-{PT}: Synthetic Brazilian Portuguese Toxicity Corpus},
-    author = {{AKCIT}},
-    year = {2024},
-    howpublished = {\url{https://huggingface.co/datasets/AKCIT/ToxSyn-PT}},
+        bibtex_citation=r"""@inproceedings{brito-etal-2026-toxsyn,
+    title = {{T}ox{S}yn-{PT}: A Synthetic Fine-Grained Dataset of Minority-Targeted Toxic Language in {P}ortuguese},
+    author = {Brito, Iago Alves and Dollis, Julia Soares and Farber, Fernanda Bufon and Fernandes, Diogo and Galv{\~a}o Filho, Arlindo R.},
+    booktitle = {Proceedings of the Fifteenth Language Resources and Evaluation Conference (LREC 2026)},
+    month = may,
+    year = {2026},
+    address = {Palma, Mallorca, Spain},
+    publisher = {European Language Resources Association (ELRA)},
+    pages = {3908--3920},
+    doi = {10.63317/3ne367tx8hvj},
+    url = {https://arxiv.org/abs/2506.10245},
 }""",
     )
 

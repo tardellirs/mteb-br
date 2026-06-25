@@ -32,7 +32,7 @@ from mteb import TaskMetadata
 from mteb.abstasks import AbsTaskRetrieval
 
 _REPO = "unicamp-dl/BR-TaxQA-R"
-_REVISION = "9f0f4263928c"
+_REVISION = "9f0f4263928c6152a40f888da3e63375a24bb0f3"
 _QUESTIONS_FILE = "questions_QA_2024_v1.1.json"
 _DOCS_FILE = "referred_legal_documents_QA_2024_v1.1.json"
 
@@ -69,11 +69,14 @@ class BRTaxQAR(AbsTaskRetrieval):
         annotations_creators="expert-annotated",
         dialect=["brazilian"],
         sample_creation="created",
-        bibtex_citation=r"""@article{br-taxqa-r-2025,
-    title = {{BR-TaxQA-R}: A {B}razilian {P}ortuguese tax-law information retrieval dataset},
-    author = {Fernandes, Leandro Car{\'i}sio and others},
+        bibtex_citation=r"""@misc{junior-etal-2025-brtaxqar,
+    title = {{BR-TaxQA-R}: A Dataset for Question Answering with References for {B}razilian Personal Income Tax Law, including case law},
+    author = {Domingos J{\'u}nior, Juvenal and Faria, Augusto and de Oliveira, E. Seiti and de Brito, Erick and Teotonio, Matheus and Assump{\c{c}}{\~a}o, Andre and Carmo, Diedre and Lotufo, Roberto and Pereira, Jayr},
     year = {2025},
-    url = {https://huggingface.co/datasets/unicamp-dl/BR-TaxQA-R},
+    eprint = {2505.15916},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.CL},
+    url = {https://arxiv.org/abs/2505.15916},
 }""",
     )
 

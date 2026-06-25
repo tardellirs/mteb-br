@@ -49,7 +49,7 @@ class HateBR(AbsTaskClassification):
         date=("2018-01-01", "2021-12-31"),
         domains=["Social", "Written"],
         task_subtypes=["Sentiment/Hate speech"],
-        license="cc-by-4.0",
+        license="apache-2.0",
         annotations_creators="expert-annotated",
         dialect=["brazilian"],
         sample_creation="found",

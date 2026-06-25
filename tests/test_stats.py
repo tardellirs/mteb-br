@@ -5,6 +5,7 @@ per-task confidence intervals reported across the leaderboard. They are
 fast (no models, no I/O) and catch regressions where a refactor silently
 breaks the statistical primitives.
 """
+
 from __future__ import annotations
 
 import pytest

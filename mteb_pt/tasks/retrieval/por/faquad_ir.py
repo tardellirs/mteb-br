@@ -10,7 +10,7 @@ documents of a federal university CS program + 21 Wikipedia articles on
 the Brazilian higher-education system.
 
 We *reformulate* it as a passage retrieval task: given a question,
-retrieve the paragraph that contains the answer. corpus = 249 unique
+retrieve the paragraph that contains the answer. corpus = 244 unique
 paragraphs (each indexed by (article_title, paragraph_index)); queries
 = 900 questions; qrels: each question's source paragraph has relevance
 score 1.
@@ -19,35 +19,33 @@ Complements the LEGAL retrieval suite (Quati web + JurisTCU
 jurisprudence + BR-TaxQA-R tax law) with ACADEMIC/educational domain
 retrieval, completing the multi-domain story.
 
-We fetch the SQuAD JSON files directly from the upstream GitHub raw
-mirror (https://github.com/liafacom/faquad), since the HF mirror is
-script-based and incompatible with datasets>=3.
+Repackaged into MTEB retrieval format (corpus / queries / qrels configs) and
+pinned at tardellirs/mteb-pt-faquad-ir for reproducibility (the original ships
+as SQuAD JSON on GitHub, not Hub-resolvable; this is the same data reshaped).
 
-License: CC-BY-4.0 (declared in HF mirror README).
+License: CC-BY-4.0 (declared in the FaQuAD HF mirror README).
 """
 
 from __future__ import annotations
 
-import json
-import urllib.request
 from typing import Any
 
 from mteb import TaskMetadata
 from mteb.abstasks import AbsTaskRetrieval
 
-_GITHUB_RAW = "https://raw.githubusercontent.com/liafacom/faquad/master/data"
-_SPLITS = ("train", "dev")
+_REPO = "tardellirs/mteb-pt-faquad-ir"
+_REVISION = "51fd9e7707bb4971229a0189560379992c3adce2"
 
 
 class FaQuADIR(AbsTaskRetrieval):
-    """FaQuAD-IR — Brazilian Portuguese academic retrieval, 900 queries / 249 paragraphs."""
+    """FaQuAD-IR — Brazilian Portuguese academic retrieval, 900 queries / 244 paragraphs."""
 
     metadata = TaskMetadata(
         name="FaQuADIR",
         description=(
             "FaQuAD reformulated as PT-BR academic retrieval: given a question "
             "about Brazilian higher education, retrieve the source paragraph "
-            "containing the answer. 900 questions over 249 unique paragraphs, "
+            "containing the answer. 900 questions over 244 unique paragraphs, "
             "drawn from 18 official documents of a federal-university CS "
             "program plus 21 Wikipedia articles about Brazil's higher-education "
             "system. Complements legal/web retrieval domains with academic/"
@@ -55,8 +53,8 @@ class FaQuADIR(AbsTaskRetrieval):
         ),
         reference="https://github.com/liafacom/faquad",
         dataset={
-            "path": "eraldoluis/faquad",
-            "revision": "205ba826a2282a4a5aa9bd3651e55ee4f2da1546",
+            "path": _REPO,
+            "revision": _REVISION,
         },
         type="Retrieval",
         category="t2t",
@@ -82,34 +80,22 @@ class FaQuADIR(AbsTaskRetrieval):
     )
 
     def load_data(self, **kwargs: Any) -> None:  # type: ignore[override]
-        """Fetch SQuAD-format JSONs from upstream GitHub, reshape into IR triples."""
+        """Load corpus/queries/qrels from the pinned MTEB-format HF dataset."""
         if getattr(self, "data_loaded", False):
             return
+        from datasets import load_dataset
 
-        corpus: dict[str, dict[str, str]] = {}
-        queries: dict[str, str] = {}
+        corpus = {
+            r["_id"]: {"text": r["text"], "title": r["title"]}
+            for r in load_dataset(_REPO, "corpus", split="test", revision=_REVISION)
+        }
+        queries = {
+            r["_id"]: r["text"]
+            for r in load_dataset(_REPO, "queries", split="test", revision=_REVISION)
+        }
         relevant_docs: dict[str, dict[str, int]] = {}
-
-        for split in _SPLITS:
-            url = f"{_GITHUB_RAW}/{split}.json"
-            with urllib.request.urlopen(url, timeout=30) as resp:
-                payload = json.loads(resp.read())
-            for article in payload.get("data", []):
-                title = (article.get("title") or "").strip()
-                for pi, para in enumerate(article.get("paragraphs", [])):
-                    context = (para.get("context") or "").strip()
-                    if not context:
-                        continue
-                    docid = f"{title}__p{pi:03d}"
-                    if docid not in corpus:
-                        corpus[docid] = {"text": context, "title": title}
-                    for qa in para.get("qas", []):
-                        qid = str(qa.get("id", "")).strip()
-                        q = (qa.get("question") or "").strip()
-                        if not qid or not q:
-                            continue
-                        queries[qid] = q
-                        relevant_docs.setdefault(qid, {})[docid] = 1
+        for r in load_dataset(_REPO, "qrels", split="test", revision=_REVISION):
+            relevant_docs.setdefault(str(r["query-id"]), {})[str(r["corpus-id"])] = int(r["score"])
 
         self.corpus = {"test": corpus}
         self.queries = {"test": queries}
