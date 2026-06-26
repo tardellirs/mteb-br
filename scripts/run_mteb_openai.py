@@ -38,7 +38,10 @@ TOKEN = os.environ.get("HF_TOKEN")
 MODEL_ID = os.environ.get("OPENAI_MODEL", "text-embedding-3-large")
 DIM = 3072 if "large" in MODEL_ID else 1536
 BATCH_THRESHOLD = int(os.environ.get("OPENAI_BATCH_THRESHOLD", "2000"))
-CHUNK_REQS = 45000  # < 50k requests/batch
+# OpenAI org enqueued-token limit is 3M for 3-large. Chunk by chars (~3.5M -> ~0.9M tok)
+# and keep MAX_PENDING * chunk under 3M enqueued.
+CHUNK_CHARS = int(os.environ.get("OPENAI_CHUNK_CHARS", "3500000"))
+MAX_PENDING = int(os.environ.get("OPENAI_MAX_PENDING", "2"))
 _EXCLUDED = {"OffComBR", "CSTNewsClustering", "BBCNewsPTClustering", "TweetSentBR"}
 _PRIORITY = {"Retrieval": 0, "Reranking": 1, "Clustering": 2}
 
@@ -104,32 +107,55 @@ class OpenAIBatchModel(AbsEncoder):
                 print(f"  [openai] submit retry ({str(e)[:70]})", flush=True); time.sleep(delay)
 
     def _embed_batch(self, texts):
-        """OpenAI Batch API (50% off): submit all chunks concurrently, poll, assemble."""
-        batch_ids = []
-        for ci in range(0, len(texts), CHUNK_REQS):
-            batch_ids.append(self._submit_chunk(texts[ci:ci + CHUNK_REQS], ci))
-        print(f"  [openai] Batch: {len(texts)} texts -> {len(batch_ids)} batch(es) submitted, polling", flush=True)
+        """OpenAI Batch API (50% off) with a concurrency window under the org 3M
+        enqueued-token limit; failed/expired batches fall back to sync (no zero vecs)."""
+        texts = [(t[:30000] if t else " ") or " " for t in texts]
+        chunks, starts, cur, cur_start, n = [], [], [], 0, 0
+        for i, t in enumerate(texts):
+            if cur and n + len(t) > CHUNK_CHARS:
+                chunks.append(cur); starts.append(cur_start); cur, n, cur_start = [], 0, i
+            cur.append(t); n += len(t)
+        if cur:
+            chunks.append(cur); starts.append(cur_start)
+        print(f"  [openai] Batch: {len(texts)} texts -> {len(chunks)} chunk(s), <= {MAX_PENDING} concurrent (3M-tok cap)", flush=True)
         results = {}
-        pending = set(batch_ids)
-        while pending:
-            time.sleep(45)
-            for bid in list(pending):
+        pending = {}  # ci -> batch_id
+
+        def _sync_fill(ci):
+            emb = self._embed_sync(chunks[ci])
+            for j in range(len(chunks[ci])):
+                results[str(starts[ci] + j)] = emb[j]
+
+        nxt = 0
+        while nxt < len(chunks) or pending:
+            while nxt < len(chunks) and len(pending) < MAX_PENDING:
                 try:
-                    b = self.client.batches.retrieve(bid)
+                    pending[nxt] = self._submit_chunk(chunks[nxt], starts[nxt]); nxt += 1
+                except Exception as e:  # noqa: BLE001
+                    if any(s in str(e).lower() for s in ("token_limit", "enqueued", "rate", "429")):
+                        break  # enqueue budget full -> wait for a batch to finish
+                    print(f"  [openai] submit err -> sync: {str(e)[:60]}", flush=True)
+                    _sync_fill(nxt); nxt += 1
+            if not pending:
+                continue
+            time.sleep(30)
+            for ci in list(pending):
+                try:
+                    b = self.client.batches.retrieve(pending[ci])
                 except Exception:  # noqa: BLE001
                     continue
-                if b.status in ("completed", "failed", "expired", "cancelled"):
-                    pending.discard(bid)
-                    if b.status == "completed" and b.output_file_id:
-                        content = self.client.files.content(b.output_file_id).read()
-                        for line in content.decode().splitlines():
-                            o = json.loads(line); resp = o.get("response", {})
-                            if resp.get("status_code") == 200:
-                                data = resp.get("body", {}).get("data", [])
-                                if data:
-                                    results[o["custom_id"]] = np.array(data[0]["embedding"], dtype=np.float32)
-                    else:
-                        print(f"  [openai] batch {bid} {b.status} (some texts -> zero vec)", flush=True)
+                if b.status == "completed" and b.output_file_id:
+                    content = self.client.files.content(b.output_file_id).read()
+                    for line in content.decode().splitlines():
+                        o = json.loads(line); resp = o.get("response", {})
+                        if resp.get("status_code") == 200:
+                            data = resp.get("body", {}).get("data", [])
+                            if data:
+                                results[o["custom_id"]] = np.array(data[0]["embedding"], dtype=np.float32)
+                    del pending[ci]
+                elif b.status in ("failed", "expired", "cancelled"):
+                    print(f"  [openai] batch ci={ci} {b.status} -> sync fallback", flush=True)
+                    _sync_fill(ci); del pending[ci]
         return np.array([results.get(str(i), np.zeros(DIM, dtype=np.float32)) for i in range(len(texts))], dtype=np.float32)
 
     def encode(self, inputs, *, task_metadata=None, hf_split=None, hf_subset=None, prompt_type=None, **kwargs):
