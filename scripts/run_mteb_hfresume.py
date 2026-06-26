@@ -128,11 +128,26 @@ def main(model_names: list[str]) -> None:
             try:
                 model = mteb.get_model(mname)
             except Exception as ge:  # noqa: BLE001
-                # ST-config models (e.g. Gemma3-based KaLM) trip mteb's multimodal
-                # loader; fall back to the SentenceTransformer text loader.
-                print(f"  [load] get_model failed ({str(ge)[:70]}); trying SentenceTransformer", flush=True)
+                # KaLM-Gemma3 is text-only (Gemma3TextModel) but tokenizer_config.json
+                # carries a stray processor_class=Gemma3Processor; ST 5.x unconditionally
+                # calls AutoProcessor -> OSError. Strip that key in the snapshot, then load
+                # the patched local path (pooling+normalize come from modules.json).
+                print(f"  [load] get_model failed ({str(ge)[:55]}); patching + SentenceTransformer", flush=True)
+                import json as _json
+                import torch as _torch
+                from huggingface_hub import snapshot_download as _sd
                 from mteb.models.sentence_transformer_wrapper import SentenceTransformerEncoderWrapper
-                model = SentenceTransformerEncoderWrapper(mname)
+                _local = _sd(mname)
+                _tc = os.path.join(_local, "tokenizer_config.json")
+                if os.path.exists(_tc):
+                    _cfg = _json.load(open(_tc))
+                    if _cfg.pop("processor_class", None) is not None:
+                        _json.dump(_cfg, open(_tc, "w"), ensure_ascii=False, indent=2)
+                        print("  [load] stripped stray processor_class", flush=True)
+                model = SentenceTransformerEncoderWrapper(
+                    _local, trust_remote_code=True,
+                    model_kwargs={"torch_dtype": _torch.bfloat16},
+                )
             mteb.evaluate(
                 model, tasks=tasks, overwrite_strategy="only-missing",
                 encode_kwargs={"batch_size": bs}, raise_error=False,
