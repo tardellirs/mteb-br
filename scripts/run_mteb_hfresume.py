@@ -59,7 +59,8 @@ def v2_tasks() -> list:
     if only:
         keep = {x.strip() for x in only.split(",")}
         tasks = [t for t in tasks if t.metadata.name in keep]
-    tasks.sort(key=lambda t: _PRIORITY.get(t.metadata.type, 9))
+    _first = os.environ.get("MTEB_FIRST_TASK", "HateBR")  # quick task before Quati for early validation
+    tasks.sort(key=lambda t: (-1 if t.metadata.name == _first else _PRIORITY.get(t.metadata.type, 9)))
     return tasks
 
 
