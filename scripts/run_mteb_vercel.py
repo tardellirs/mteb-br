@@ -154,7 +154,8 @@ def main(model_ids):
         print(f"\n=== model: {mid} ===", flush=True)
         try:
             model = VercelGatewayModel(mid)
-            mteb.evaluate(model, tasks=tasks, overwrite_strategy="only-missing",
+            mteb.evaluate(model, tasks=tasks,
+                          overwrite_strategy=os.environ.get("MTEB_OVERWRITE", "only-missing"),
                           encode_kwargs={"batch_size": model.batch}, raise_error=False)
             print(f"=== {mid} done in {(time.time() - t0) / 60:.1f} min ===", flush=True)
         except Exception as e:  # noqa: BLE001
