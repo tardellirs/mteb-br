@@ -91,7 +91,7 @@ class VoyageContextModel(AbsEncoder):
             self._last_req = time.time()
 
     def _call(self, batch, input_type):
-        for delay in (5, 20, 45, 90, None):
+        for delay in (5, 20, 45, 90, 180, 300, None):
             self._throttle()
             try:
                 if self._ctx:  # contextualized: each text as a single-chunk doc
@@ -108,8 +108,8 @@ class VoyageContextModel(AbsEncoder):
             except Exception as e:  # noqa: BLE001 -- 429 / transient -> back off
                 msg = str(e).lower()
                 if delay is None:
-                    print(f"  [voyage] give-up batch: {str(e)[:110]}", flush=True)
-                    return [[0.0] * (self._dim or 1024)] * len(batch)
+                    print(f"  [voyage] FAILED after retries -> RAISE (never zero-vec): {str(e)[:80]}", flush=True)
+                    raise  # fail task cleanly -> mteb skips -> re-run, never corrupt with zero-vec
                 extra = 45 if ("rate" in msg or "429" in msg or "limit" in msg) else 0
                 print(f"  [voyage] retry ({str(e)[:60]}) wait {delay + extra}s", flush=True)
                 time.sleep(delay + extra)
@@ -177,7 +177,7 @@ def main():
     t0 = time.time()
     print(f"\n=== model: voyage/{MODEL_ID} ===", flush=True)
     try:
-        mteb.evaluate(VoyageContextModel(), tasks=tasks, overwrite_strategy="only-missing",
+        mteb.evaluate(VoyageContextModel(), tasks=tasks, overwrite_strategy=os.environ.get("MTEB_OVERWRITE", "only-missing"),
                       encode_kwargs={"batch_size": 128}, raise_error=False)
         print(f"=== voyage done in {(time.time() - t0) / 60:.1f} min ===", flush=True)
     except Exception as e:  # noqa: BLE001
