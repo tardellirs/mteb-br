@@ -243,7 +243,7 @@ def pull_from_hf() -> None:
     try:
         snapshot_download(
             REPO, repo_type="dataset",
-            allow_patterns="results/**",
+            allow_patterns=f"results/voyage__{MODEL_ID}/**",
             local_dir=CACHE,
             token=TOKEN,
         )

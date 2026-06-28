@@ -93,7 +93,8 @@ def pull_from_hf() -> None:
     os.makedirs(RESULTS, exist_ok=True)
     try:
         snapshot_download(
-            REPO, repo_type="dataset", allow_patterns="results/**",
+            REPO, repo_type="dataset",
+            allow_patterns=[f"results/{sl}/**" for sl in _MODEL_SLUGS],
             local_dir=CACHE, token=TOKEN,
         )
         print(f"[hf-resume] pulled existing results from {REPO} ({_n_files(RESULTS)} files cached)", flush=True)
