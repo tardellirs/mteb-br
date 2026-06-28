@@ -53,6 +53,10 @@ def v2_tasks() -> list:
     if only:
         keep = {x.strip() for x in only.split(",")}
         tasks = [t for t in tasks if t.metadata.name in keep]
+    excl = os.environ.get("MTEB_EXCLUDE")
+    if excl:
+        drop = {x.strip() for x in excl.split(",")}
+        tasks = [t for t in tasks if t.metadata.name not in drop]
     tasks.sort(key=lambda t: _PRIORITY.get(t.metadata.type, 9))
     return tasks
 
@@ -61,7 +65,7 @@ class OpenAIBatchModel(AbsEncoder):
     """mteb encoder for an OpenAI embedding model (sync small, Batch API for big)."""
 
     def __init__(self):
-        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])  # direct OpenAI
+        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=120.0, max_retries=2)  # timeout pra não pendurar
         self.mteb_model_meta = ModelMeta(
             loader=None, name=f"openai/{MODEL_ID}", revision="api",
             release_date="2024-01-25", languages=["por-Latn"], n_parameters=None,
@@ -73,8 +77,13 @@ class OpenAIBatchModel(AbsEncoder):
 
     def _embed_sync(self, texts):
         out = []
-        for i in range(0, len(texts), 2048):
-            chunk = [(t[:30000] if t else " ") or " " for t in texts[i:i + 2048]]
+        prepped = [(t[:30000] if t else " ") or " " for t in texts]
+        i = 0
+        while i < len(prepped):
+            # batch por token estimado (chars/4) até ~250K, sob o limite de 300K/request da OpenAI
+            chunk, toks = [], 0
+            while i < len(prepped) and (not chunk or (len(chunk) < 2048 and toks + len(prepped[i]) // 4 < 250000)):
+                chunk.append(prepped[i]); toks += len(prepped[i]) // 4; i += 1
             for delay in (2, 5, 15, 30, 60, None):
                 try:
                     r = self.client.embeddings.create(model=MODEL_ID, input=chunk)
@@ -184,7 +193,8 @@ def _upload_once(api):
     for attempt in range(3):
         try:
             api.upload_folder(folder_path=RESULTS, path_in_repo="results", repo_id=REPO,
-                              repo_type="dataset", commit_message="openai sync")
+                              repo_type="dataset", commit_message=f"openai sync ({MODEL_ID})",
+                              allow_patterns=[f"openai__{MODEL_ID}/**"])
             return
         except Exception as e:  # noqa: BLE001
             if "429" in str(e) and attempt < 2:

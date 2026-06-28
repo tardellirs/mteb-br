@@ -263,6 +263,7 @@ def _upload_once(api: HfApi) -> None:
                 repo_id=REPO,
                 repo_type="dataset",
                 commit_message=f"voyage-rerank {MODEL_ID} sync",
+                allow_patterns=[f"voyage__{MODEL_ID}/**"],
             )
             return
         except Exception as e:  # noqa: BLE001

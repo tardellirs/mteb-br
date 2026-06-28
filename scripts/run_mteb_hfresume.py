@@ -51,6 +51,7 @@ TOKEN = os.environ.get("HF_TOKEN")
 
 _EXCLUDED = {"OffComBR", "CSTNewsClustering", "BBCNewsPTClustering", "TweetSentBR"}
 _PRIORITY = {"Retrieval": 0, "Reranking": 1, "Clustering": 2}
+_MODEL_SLUGS: list[str] = []  # scoped upload (anti-clobber): so os modelos desta run
 
 
 def v2_tasks() -> list:
@@ -90,6 +91,7 @@ def _upload_once(api: HfApi) -> None:
             api.upload_folder(
                 folder_path=RESULTS, path_in_repo="results",
                 repo_id=REPO, repo_type="dataset", commit_message="hf-resume sync",
+                allow_patterns=[sl + "/**" for sl in _MODEL_SLUGS],
             )
             return
         except Exception as e:  # noqa: BLE001 -- 429 / transient -> back off + retry
@@ -108,6 +110,8 @@ def sync_loop(stop: threading.Event, api: HfApi) -> None:
 
 
 def main(model_names: list[str]) -> None:
+    global _MODEL_SLUGS
+    _MODEL_SLUGS = [m.replace("/", "__") for m in model_names]
     bs = int(os.environ.get("MTEB_BATCH_SIZE", "64"))
     pull_from_hf()
     tasks = v2_tasks()
@@ -120,6 +124,9 @@ def main(model_names: list[str]) -> None:
     stop = threading.Event()
     threading.Thread(target=sync_loop, args=(stop, api), daemon=True).start()
     hub = os.environ.get("HF_HUB_CACHE", "")
+    import base64 as _b64mp, json as _jsonmp
+    _mpe = os.environ.get("MTEB_MODEL_PROMPTS_B64")
+    _MP = _jsonmp.loads(_b64mp.b64decode(_mpe)) if _mpe else None
     for mname in model_names:
         t0 = time.time()
         model = None
@@ -127,6 +134,11 @@ def main(model_names: list[str]) -> None:
         try:
             try:
                 model = mteb.get_model(mname)
+                if _MP and hasattr(model, "model_prompts"):
+                    model.model_prompts = _MP
+                    if hasattr(getattr(model, "model", None), "prompts"):
+                        model.model.prompts = _MP
+                    print(f"  [load] get_model model_prompts override: {list(_MP.keys())}", flush=True)
             except Exception as ge:  # noqa: BLE001
                 # KaLM-Gemma3 is text-only (Gemma3TextModel) but tokenizer_config.json
                 # carries a stray processor_class=Gemma3Processor; ST 5.x unconditionally
@@ -148,9 +160,15 @@ def main(model_names: list[str]) -> None:
                     if _changed:
                         _json.dump(_cfg, open(_tc, "w"), ensure_ascii=False, indent=2)
                         print("  [load] patched tokenizer_config (processor_class strip + padding_side=left)", flush=True)
+                import base64 as _b64mp
+                _mpe = os.environ.get("MTEB_MODEL_PROMPTS_B64")
+                _mp = _json.loads(_b64mp.b64decode(_mpe)) if _mpe else None
+                if _mp:
+                    print(f"  [load] model_prompts aplicado: {list(_mp.keys())}", flush=True)
                 model = SentenceTransformerEncoderWrapper(
                     _local, trust_remote_code=True,
                     model_kwargs={"torch_dtype": _torch.bfloat16},
+                    model_prompts=_mp,
                 )
             mteb.evaluate(
                 model, tasks=tasks, overwrite_strategy=os.environ.get("MTEB_OVERWRITE", "only-missing"),

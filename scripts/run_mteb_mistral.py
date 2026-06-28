@@ -205,7 +205,8 @@ def _upload_once(api: HfApi):
                 path_in_repo="results",
                 repo_id=REPO,
                 repo_type="dataset",
-                commit_message="mistral sync",
+                commit_message=f"mistral sync ({MODEL_ID})",
+                allow_patterns=[f"mistralai__{MODEL_ID}/**"],
             )
             return
         except Exception as e:  # noqa: BLE001

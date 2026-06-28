@@ -59,6 +59,10 @@ def v2_tasks() -> list:
     if only:
         keep = {x.strip() for x in only.split(",")}
         tasks = [t for t in tasks if t.metadata.name in keep]
+    excl = os.environ.get("MTEB_EXCLUDE")
+    if excl:
+        drop = {x.strip() for x in excl.split(",")}
+        tasks = [t for t in tasks if t.metadata.name not in drop]
     tasks.sort(key=lambda t: _PRIORITY.get(t.metadata.type, 9))
     return tasks
 
@@ -188,7 +192,8 @@ def _upload_once(api):
     for attempt in range(3):
         try:
             api.upload_folder(folder_path=RESULTS, path_in_repo="results", repo_id=REPO,
-                              repo_type="dataset", commit_message="gemini sync")
+                              repo_type="dataset", commit_message=f"gemini sync ({MODEL_ID})",
+                              allow_patterns=[f"google__{MODEL_ID}/**"])
             return
         except Exception as e:  # noqa: BLE001
             if "429" in str(e) and attempt < 2:
@@ -205,12 +210,12 @@ def sync_loop(stop, api):
 def main():
     pull_from_hf()
     tasks = v2_tasks()
-    print(f"[gemini] gemini-embedding-001 x {len(tasks)} tasks | batch>{BATCH_THRESHOLD} texts", flush=True)
+    print(f"[gemini] {MODEL_ID} x {len(tasks)} tasks | batch>{BATCH_THRESHOLD} texts", flush=True)
     api = HfApi(token=TOKEN)
     stop = threading.Event()
     threading.Thread(target=sync_loop, args=(stop, api), daemon=True).start()
     t0 = time.time()
-    print("\n=== model: google/gemini-embedding-001 ===", flush=True)
+    print(f"\n=== model: google/{MODEL_ID} ===", flush=True)
     try:
         mteb.evaluate(GeminiModel(), tasks=tasks, overwrite_strategy=os.environ.get("MTEB_OVERWRITE", "only-missing"),
                       encode_kwargs={"batch_size": 100}, raise_error=False)
