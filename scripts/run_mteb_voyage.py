@@ -75,7 +75,7 @@ class VoyageContextModel(AbsEncoder):
         self._lock = threading.Lock()
         self._last_req = 0.0
         self._min_gap = 60.0 / RPM            # seconds between requests (RPM cap)
-        self._max_tok_per_req = int(os.environ.get("VOYAGE_MAX_TOK_REQ", "100000"))  # API per-req cap; TPM via _throttle
+        self._max_tok_per_req = int(os.environ.get("VOYAGE_MAX_TOK_REQ", "80000"))  # API per-req cap; TPM via _throttle
         self._ctx = "context" in MODEL_ID   # contextualized vs standard embed
         self._dim = None                     # auto-detected from first embedding
         self.mteb_model_meta = ModelMeta(
