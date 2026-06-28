@@ -113,10 +113,11 @@ def _n_files(root):
     return sum(len(f) for _, _, f in os.walk(root)) if os.path.isdir(root) else 0
 
 
-def pull_from_hf():
+def pull_from_hf(model_ids):
     os.makedirs(RESULTS, exist_ok=True)
     try:
-        snapshot_download(REPO, repo_type="dataset", allow_patterns="results/**", local_dir=CACHE, token=TOKEN)
+        pats = [f"results/{m.replace('/', '__')}/**" for m in model_ids]
+        snapshot_download(REPO, repo_type="dataset", allow_patterns=pats, local_dir=CACHE, token=TOKEN)
         print(f"[hf-resume] pulled {_n_files(RESULTS)} files from {REPO}", flush=True)
     except Exception as e:
         print(f"[hf-resume] pull skipped ({str(e)[:100]})", flush=True)
@@ -143,7 +144,7 @@ def sync_loop(stop, api):
 
 
 def main(model_ids):
-    pull_from_hf()
+    pull_from_hf(model_ids)
     tasks = v2_tasks()
     print(f"[vercel] {len(model_ids)} models x {len(tasks)} tasks | repo={REPO}", flush=True)
     api = HfApi(token=TOKEN)
