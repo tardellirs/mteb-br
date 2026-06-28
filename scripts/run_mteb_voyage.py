@@ -75,7 +75,7 @@ class VoyageContextModel(AbsEncoder):
         self._lock = threading.Lock()
         self._last_req = 0.0
         self._min_gap = 60.0 / RPM            # seconds between requests (RPM cap)
-        self._max_tok_per_req = max(1000, int(TPM / max(RPM, 1)))  # stay under TPM
+        self._max_tok_per_req = int(os.environ.get("VOYAGE_MAX_TOK_REQ", "100000"))  # API per-req cap; TPM via _throttle
         self._ctx = "context" in MODEL_ID   # contextualized vs standard embed
         self._dim = None                     # auto-detected from first embedding
         self.mteb_model_meta = ModelMeta(
@@ -87,16 +87,17 @@ class VoyageContextModel(AbsEncoder):
             use_instructions=True, training_datasets=None,
         )
 
-    def _throttle(self):
+    def _throttle(self, n_tok=0):
         with self._lock:
-            wait = self._min_gap - (time.time() - self._last_req)
+            gap = max(self._min_gap, n_tok / max(TPM, 1.0) * 60.0)  # RPM cap OU proporcional ao TPM
+            wait = gap - (time.time() - self._last_req)
             if wait > 0:
                 time.sleep(wait)
             self._last_req = time.time()
 
     def _call(self, batch, input_type):
         for delay in (5, 20, 45, 90, 180, 300, None):
-            self._throttle()
+            self._throttle(sum(max(1, len(t or " ") // 4) for t in batch))
             try:
                 if self._ctx:  # contextualized: each text as a single-chunk doc
                     wrapped = [[(t[:30000] if t else " ") or " "] for t in batch]
@@ -123,7 +124,7 @@ class VoyageContextModel(AbsEncoder):
         out, cur, cur_tok = [], [], 0
         for t in texts:
             tok = max(1, len(t or " ") // 4)
-            if cur and (cur_tok + tok > self._max_tok_per_req or len(cur) >= 128):
+            if cur and (cur_tok + tok > self._max_tok_per_req or len(cur) >= 1000):
                 out.extend(self._call(cur, input_type)); cur, cur_tok = [], 0
             cur.append(t); cur_tok += tok
         if cur:
@@ -144,7 +145,7 @@ def _n_files(root):
 def pull_from_hf():
     os.makedirs(RESULTS, exist_ok=True)
     try:
-        snapshot_download(REPO, repo_type="dataset", allow_patterns="results/**", local_dir=CACHE, token=TOKEN)
+        snapshot_download(REPO, repo_type="dataset", allow_patterns=f"results/voyage__{MODEL_ID}/**", local_dir=CACHE, token=TOKEN)
         print(f"[hf-resume] pulled {_n_files(RESULTS)} files", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"[hf-resume] pull skipped ({str(e)[:90]})", flush=True)

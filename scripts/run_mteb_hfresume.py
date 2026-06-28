@@ -170,10 +170,49 @@ def main(model_names: list[str]) -> None:
                     model_kwargs={"torch_dtype": _torch.bfloat16},
                     model_prompts=_mp,
                 )
+                try:
+                    import re as _re2
+                    _msha = _re2.search(r"snapshots[/_]+([0-9a-f]{40})", _local)
+                    if getattr(model, "mteb_model_meta", None) is not None:
+                        model.mteb_model_meta.name = mname
+                        if _msha:
+                            model.mteb_model_meta.revision = _msha.group(1)
+                        print(f"  [load] meta limpo -> {mname} @ {(_msha.group(1)[:8] if _msha else '?')}", flush=True)
+                except Exception as _e2:
+                    print(f"  [load] meta-fix falhou: {str(_e2)[:50]}", flush=True)
+            # (removido o wrapper _te de truncacao do BRTaxQAR: reconstruia o input do encode
+            #  como lista e quebrava o RETRIEVAL com "'list' object has no attribute 'dataset'".
+            #  BRTaxQAR roda sem truncacao -- nao causa OOM na pratica.)
             mteb.evaluate(
                 model, tasks=tasks, overwrite_strategy=os.environ.get("MTEB_OVERWRITE", "only-missing"),
                 encode_kwargs={"batch_size": bs}, raise_error=False,
             )
+            # ROOT-FIX anti-LIXO: o ST-fallback grava no slug-path-local
+            # (__root__hfmodels__models--ORG--MODEL__snapshots__SHA/no_revision_available/).
+            # mteb_model_meta.name NAO redireciona -> renomeia o LIXO pro slug limpo aqui,
+            # no rev ja existente (do pull) p/ nao criar rev duplicado. Sem isso o upload
+            # escopado nao casa e os resultados nunca sobem (falha silenciosa).
+            try:
+                import re as _rl
+                clean_slug = mname.replace("/", "__")
+                for d in list(os.listdir(RESULTS)):
+                    mm = _rl.search(r"models--(.+?)--(.+?)__snapshots__([0-9a-f]{40})", d)
+                    if not mm or ("%s__%s" % (mm.group(1), mm.group(2))) != clean_slug:
+                        continue
+                    src = os.path.join(RESULTS, d, "no_revision_available")
+                    if not os.path.isdir(src):
+                        continue
+                    cdir = os.path.join(RESULTS, clean_slug)
+                    revs = [r for r in os.listdir(cdir) if os.path.isdir(os.path.join(cdir, r))] if os.path.isdir(cdir) else []
+                    target_rev = revs[0] if revs else mm.group(3)  # rev do pull, senao o SHA
+                    dst = os.path.join(RESULTS, clean_slug, target_rev)
+                    os.makedirs(dst, exist_ok=True)
+                    for fn in os.listdir(src):
+                        shutil.move(os.path.join(src, fn), os.path.join(dst, fn))
+                    shutil.rmtree(os.path.join(RESULTS, d), ignore_errors=True)
+                    print(f"  [anti-LIXO] {d[:46]} -> {clean_slug}/{target_rev[:8]}", flush=True)
+            except Exception as _le:
+                print(f"  [anti-LIXO] falhou: {str(_le)[:70]}", flush=True)
             print(f"=== {mname} done in {(time.time() - t0) / 60:.1f} min ===", flush=True)
         except Exception as e:  # a bad model must not halt the fleet
             print(f"=== {mname} FAILED: {type(e).__name__}: {str(e)[:200]} ===", flush=True)
