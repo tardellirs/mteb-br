@@ -151,6 +151,24 @@ def main(model_names: list[str]) -> None:
         print(f"\n=== model: {mname} ===", flush=True)
         try:
             try:
+                # fp16 overflow fix: Mistral/Qwen2 decoder-LLM embedders emit inf/NaN on
+                # long inputs (EnemEssay/AssinRTE/InferBR) under fp16 (logits > 65504).
+                # bf16 has fp32 exponent range -> no overflow. Patch loader_kwargs->bfloat16.
+                _FB16 = {"intfloat/e5-mistral-7b-instruct", "Alibaba-NLP/gte-Qwen2-1.5B-instruct",
+                         "Salesforce/SFR-Embedding-Mistral", "Salesforce/SFR-Embedding-2_R"}
+                _FB16 |= {m for m in os.environ.get("MTEB_FORCE_BF16", "").split(",") if m}
+                if mname in _FB16:
+                    import torch as _torch
+                    try:
+                        _meta = mteb.get_model_meta(mname)
+                        _lk = dict(getattr(_meta, "loader_kwargs", None) or {})
+                        _mk = dict(_lk.get("model_kwargs", {}))
+                        _mk["dtype"] = _torch.bfloat16
+                        _lk["model_kwargs"] = _mk
+                        _meta.loader_kwargs = _lk
+                        print(f"  [bf16] dtype=bfloat16 forced for {mname} (fp16 overflow fix)", flush=True)
+                    except Exception as _be:  # noqa: BLE001
+                        print(f"  [bf16] patch failed: {str(_be)[:60]}", flush=True)
                 model = mteb.get_model(mname)
                 if _MP and hasattr(model, "model_prompts"):
                     model.model_prompts = _MP
