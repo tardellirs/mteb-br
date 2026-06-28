@@ -129,7 +129,8 @@ def _upload_once(api):
     for attempt in range(3):
         try:
             api.upload_folder(folder_path=RESULTS, path_in_repo="results", repo_id=REPO,
-                              repo_type="dataset", commit_message="vercel sync")
+                              repo_type="dataset", commit_message="vercel sync",
+                              allow_patterns=[f"{s}/**" for s in _SLUGS])
             return
         except Exception as e:  # noqa: BLE001
             if "429" in str(e) and attempt < 2:
@@ -144,6 +145,8 @@ def sync_loop(stop, api):
 
 
 def main(model_ids):
+    global _SLUGS
+    _SLUGS = [m.replace("/", "__") for m in model_ids]
     pull_from_hf(model_ids)
     tasks = v2_tasks()
     print(f"[vercel] {len(model_ids)} models x {len(tasks)} tasks | repo={REPO}", flush=True)
