@@ -187,7 +187,7 @@ def pull_from_hf():
     try:
         snapshot_download(
             REPO, repo_type="dataset",
-            allow_patterns="results/**",
+            allow_patterns=f"results/mistralai__{MODEL_ID}/**",
             local_dir=CACHE, token=TOKEN,
         )
         print(f"[hf-resume] pulled {_n_files(RESULTS)} files", flush=True)
