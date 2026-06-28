@@ -103,7 +103,15 @@ class GeminiModel(AbsEncoder):
     def _embed_sync(self, texts, task_type):
         out = []
         for i in range(0, len(texts), 100):
-            chunk = [(t[:30000] if t else " ") or " " for t in texts[i:i + 100]]
+            raw = [(t[:30000] if t else " ") or " " for t in texts[i:i + 100]]
+            # gemini-embedding-2: the SDK's t_contents() ACCUMULATES a plain list of strings
+            # into ONE Content (multi-part) -> returns 1 aggregated embedding instead of N,
+            # silently corrupting every task (retrieval->ndcg 0, classif->count mismatch).
+            # Wrapping each string as a separate Content object avoids the accumulation.
+            if "gemini-embedding-2" in MODEL_ID:
+                chunk = [types.Content(parts=[types.Part(text=t)]) for t in raw]
+            else:
+                chunk = raw
             for delay in (5, 15, 30, 60, 120, 240, 480, None):
                 try:
                     r = self.client.models.embed_content(model=MODEL_ID, contents=chunk, config=self._cfg(task_type))
