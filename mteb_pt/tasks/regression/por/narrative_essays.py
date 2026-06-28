@@ -6,7 +6,7 @@ competencies (formal register, thematic coherence, narrative/rhetorical
 structure, cohesion; 1-5 each). The regression target is the TOTAL (sum, 4-20).
 Complements the argumentative-essay AES task (EnemEssayRegression) with a
 distinct genre (narrative) and age group (elementary). Mirror pinned at
-tardellirs/mteb-pt-narrative-essays.
+mteb-pt/narrative-essays.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from __future__ import annotations
 from mteb import TaskMetadata
 from mteb.abstasks.regression import AbsTaskRegression
 
-_REPO = "tardellirs/mteb-pt-narrative-essays"
+_REPO = "mteb-pt/narrative-essays"
 _REVISION = "f83c5198ef498d34be6ef2a5b5cf80df3d690966"
 
 

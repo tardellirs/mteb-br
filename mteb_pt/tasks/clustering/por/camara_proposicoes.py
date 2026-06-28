@@ -5,7 +5,7 @@ of Deputies open-data API (dadosabertos.camara.leg.br), labelled by the Chamber'
 official theme taxonomy (24 themes with enough volume kept: Economia, Educação,
 Saúde, Meio Ambiente e Desenvolvimento Sustentável, Direitos Humanos e Minorias,
 etc.). Public-domain government data (Lei de Acesso à Informação 12.527/2011).
-Government / legislative domain. Built as tardellirs/mteb-pt-camara-proposicoes-clustering.
+Government / legislative domain. Built as mteb-pt/camara-proposicoes-clustering.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from __future__ import annotations
 from mteb import TaskMetadata
 from mteb.abstasks import AbsTaskClustering
 
-_REPO = "tardellirs/mteb-pt-camara-proposicoes-clustering"
+_REPO = "mteb-pt/camara-proposicoes-clustering"
 _REVISION = "1eafc7583e0d23e121f182c0bc067145a2d5ef73"
 
 
