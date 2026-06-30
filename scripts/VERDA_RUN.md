@@ -1,6 +1,6 @@
 # Running MTEB(por, v2) on Verda (spot + SFS)
 
-Exact recipe for evaluating models on the 26-task suite (+ pending PortuLexRRIP),
+Exact recipe for evaluating models on the 22-task suite,
 resumable across spot preemptions, with results persisted on a Shared Filesystem.
 
 ## Instances
@@ -25,12 +25,12 @@ export HF_TOKEN=hf_xxx              # Gemma + PortuLex(rrip) access
 export MTEB_BATCH_SIZE=256          # L40S 48GB; for 8B models later drop to ~32-64
 mkdir -p "$HF_HOME" "$MTEB_CACHE"
 
-# --- code (branch with the pending PortuLexRRIP task) ---
-git clone -b portulex-rrip https://github.com/tardellirs/mteb-pt.git
+# --- code (the 22-task MTEB(por) suite) ---
+git clone https://github.com/tardellirs/mteb-pt.git
 cd mteb-pt
 pip install -e .          # pyproject pins datasets>=3, sentence-transformers>=5, transformers>=4.57 (Gemma3-ready)
 
-# --- run embeddinggemma on ALL tasks (26 headline + 1 pending) ---
+# --- run embeddinggemma on all 22 tasks ---
 python scripts/run_mteb_por_v2.py google/embeddinggemma-300m
 ```
 
@@ -48,7 +48,7 @@ Attach the **same SFS**, then:
 export SFS=/mnt/sfs
 export MTEB_CACHE=$SFS/mteb_cache
 export HF_TOKEN=hf_xxx
-git clone -b portulex-rrip https://github.com/tardellirs/mteb-pt.git && cd mteb-pt && pip install -e .
+git clone https://github.com/tardellirs/mteb-pt.git && cd mteb-pt && pip install -e .
 
 python scripts/upload_results_to_hf.py --dry-run    # list what would upload
 python scripts/upload_results_to_hf.py              # -> mteb-pt/mteb-pt-results (one batched commit, no 429s)
@@ -59,6 +59,6 @@ Never upload during the GPU run — it wastes GPU time. Results live on the SFS 
 ---
 
 ## Notes
-- **PortuLexRRIP is PENDING** (gated + license unconfirmed): it runs and is cached, but is excluded from the headline mean. If the license never clears, delete its cached results + the wrapper; the 26-task headline is unaffected.
+- **PortuLexRRIP** is a headline Classification task (8-way rhetorical-role). Its source dataset () is gated on HF and its license is unspecified — accept gated access before running.
 - **Parallelism:** to go faster, provision several `1L40S.20V` spots, all attached to the same SFS, each running a different subset of models. The shared `MTEB_CACHE` + `only-missing` dedupe automatically. ~50 models: ~8-12h on one L40S, ~2-3h across 4.
 - **embeddinggemma sanity check:** v1 baseline was `mean_16 = 0.7202` (#6). The v2 scores on the overlapping tasks should land near this.

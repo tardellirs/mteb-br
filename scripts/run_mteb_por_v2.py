@@ -26,7 +26,7 @@ checkpointed early -- a later preemption then only re-does a cheap task.
 Resume after a spot kill: just re-run the SAME command. Nothing re-downloads and
 finished (model, task) pairs are skipped.
 
-NOTE: this runs the 26 license-clean native tasks. Gated tasks (PortuLex, PAGICO,
+NOTE: this runs the 22 license-clean native tasks. Other candidate tasks (PAGICO,
 Ulysses, SICK-Br) are added to the suite only once their licenses clear.
 """
 
@@ -48,8 +48,8 @@ _PRIORITY = {"Retrieval": 0, "Reranking": 1, "Clustering": 2}
 
 
 def v2_tasks():
-    """The MTEB(por, v2) suite: the 26 headline tasks + any PENDING tasks (e.g.
-    PortuLexRRIP, gated/license-pending) registered in mteb_pt.register."""
+    """The MTEB(por, v2) suite: the 22 headline tasks — the 21 registered in
+    mteb_pt.register plus Assin2STS from upstream mteb."""
     tasks = [cls() for cls in register._TASKS_TO_REGISTER if cls.metadata.name not in _EXCLUDED]
     tasks.append(mteb.get_task("Assin2STS"))
     tasks.sort(key=lambda t: _PRIORITY.get(t.metadata.type, 9))

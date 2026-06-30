@@ -7,7 +7,7 @@ qrels are carried over UNCHANGED. The 50k pool is therefore a strict subset of
 the pinned 250k pool (which is itself a subset of the original 1M ClueWeb22-PT).
 
 Why: Quati is ~95% of the per-model encoding load at 250k (1.1B chars vs ~63M for
-all other 26 tasks combined). Cutting to 50k makes the whole MTEB(por) suite ~4x
+all other 21 tasks combined). Cutting to 50k makes the whole MTEB(por) suite ~4x
 cheaper to run and re-run, while a 50k pool is still a large, well-discriminating
 retrieval corpus (all gold preserved -> recall ceiling unchanged; ~48k distractors
 keep it hard).
