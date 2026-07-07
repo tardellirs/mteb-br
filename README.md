@@ -1,6 +1,6 @@
 <div align="center">
 
-# MTEB-PT
+# MTEB-BR
 
 **Massive Text Embedding Benchmark for Brazilian Portuguese**
 
